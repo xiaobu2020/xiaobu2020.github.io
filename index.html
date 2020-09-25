@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en-us">
+<html lang="zh-CN">
 <head>
 	<meta name="generator" content="Hugo 0.70.0" />
 
@@ -7,17 +7,17 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>My New Hugo Site | </title>
-    <meta property="og:title" content="My New Hugo Site | ">
+    <title>飞雪无情的博客 | 专注于Android、Java、Go语言(golang)、移动互联网、项目管理、软件架构</title>
+    <meta property="og:title" content="飞雪无情的博客 | 专注于Android、Java、Go语言(golang)、移动互联网、项目管理、软件架构">
     <meta property="og:type" content="website">
-    <meta name="Keywords" content="">
-    <meta name="description" content="">
+    <meta name="Keywords" content="golang,go语言,go语言笔记,飞雪无情,java,android,博客,项目管理,python,软件架构,公众号,小程序">
+    <meta name="description" content="专注于IT互联网，包括但不限于Go语言(golang)、Java、Android、Python、项目管理、抖音分析、软件架构等">
     <meta property="og:url" content="https://xiaobu2020.github.io/">
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
 
     <link rel="stylesheet" href='/css/normalize.css'>
     <link rel="stylesheet" href='/css/style.css'>
-    <link rel="alternate" type="application/rss+xml+xml" href="https://xiaobu2020.github.io/index.xml" title="My New Hugo Site" />
+    <link rel="alternate" type="application/rss+xml+xml" href="https://xiaobu2020.github.io/index.xml" title="飞雪无情的博客" />
     <script type="text/javascript" src="//cdn.bootcdn.net/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
     
@@ -25,6 +25,10 @@
     
     
     
+    
+        <link rel="stylesheet" href='/css/douban.css'>
+    
+        <link rel="stylesheet" href='/css/other.css'>
     
 </head>
 
@@ -37,15 +41,21 @@
                 
                     <h1>
                         <a id="logo" href="https://xiaobu2020.github.io">
-                            My New Hugo Site
+                            飞雪无情的博客
                         </a>
                     </h1>
                 
-                
+                <p class="description">专注于Android、Java、Go语言(golang)、移动互联网、项目管理、软件架构</p>
             </div>
             <div>
                 <nav id="nav-menu" class="clearfix">
                     <a class="current" href="https://xiaobu2020.github.io">首页</a>
+                    
+                    <a  href="https://xiaobu2020.github.io/tools/" title="工具">工具</a>
+                    
+                    <a  href="https://xiaobu2020.github.io/archives/" title="归档">归档</a>
+                    
+                    <a  href="https://xiaobu2020.github.io/about/" title="关于">关于</a>
                     
                 </nav>
             </div>
@@ -72,20 +82,7 @@
         </date>
         
         <div class="post-content">
-            一、运行时数据区域 程序计数器 记录正在执行的虚拟机字节码指令的地址（如果正在执行的是本地方法则为空）。
-Java 虚拟机栈 每个 Java 方法在执行的同时会创建一个栈帧用于存储局部变量表、操作数栈、常量池引用等信息。从方法调用直至执行完成的过程，对应着一个栈帧在 Java 虚拟机栈中入栈和出栈的过程。
-可以通过 -Xss 这个虚拟机参数来指定每个线程的 Java 虚拟机栈内存大小，在 JDK 1.4 中默认为 256K，而在 JDK 1.5+ 默认为 1M：
-java -Xss2M HackTheJava 该区域可能抛出以下异常：
- 当线程请求的栈深度超过最大值，会抛出 StackOverflowError 异常； 栈进行动态扩展时如果无法申请到足够内存，会抛出 OutOfMemoryError 异常。  本地方法栈 本地方法栈与 Java 虚拟机栈类似，它们之间的区别只不过是本地方法栈为本地方法服务。
-本地方法一般是用其它语言（C、C++ 或汇编语言等）编写的，并且被编译为基于本机硬件和操作系统的程序，对待这些方法需要特别处理。
-堆 所有对象都在这里分配内存，是垃圾收集的主要区域（&ldquo;GC 堆&rdquo;）。
-现代的垃圾收集器基本都是采用分代收集算法，其主要的思想是针对不同类型的对象采取不同的垃圾回收算法。可以将堆分成两块：
- 新生代（Young Generation） 老年代（Old Generation）  堆不需要连续内存，并且可以动态增加其内存，增加失败会抛出 OutOfMemoryError 异常。
-可以通过 -Xms 和 -Xmx 这两个虚拟机参数来指定一个程序的堆内存大小，第一个参数设置初始值，第二个参数设置最大值。
-java -Xms1M -Xmx2M HackTheJava 方法区 用于存放已被加载的类信息、常量、静态变量、即时编译器编译后的代码等数据。
-和堆一样不需要连续的内存，并且可以动态扩展，动态扩展失败一样会抛出 OutOfMemoryError 异常。
-对这块区域进行垃圾回收的主要目标是对常量池的回收和对类的卸载，但是一般比较难实现。
-HotSpot 虚拟机把它当成永久代来进行垃圾回收。但很难确定永久代的大小，因为它受到很多因素影响，并且每次 Full GC 之后永久代的大小都会改变，所以经常会抛出 OutOfMemoryError 异常。为了更容易管理方法区，从 JDK 1.……
+            一、运行时数据区域 程序计数器 记录正在执行的虚拟机字节码指令的地址（如果正在执行的是本地方法则为空）。 Java 虚拟机栈 每个 Java 方法在执行的同时会创建一个栈帧用于存储局部变量表、操作数栈、常量池引用等信息。从方法调用直至执行完成的过程，对应着一个栈帧在 Java 虚拟机栈中入栈和出栈的过程。 可以通过 -Xss……
         </div>
         <p class="readmore"><a href="https://xiaobu2020.github.io/post/blog/">阅读全文</a></p>
     </article>
@@ -100,7 +97,7 @@ HotSpot 虚拟机把它当成永久代来进行垃圾回收。但很难确定永
 
                     <footer id="footer">
     <div>
-        &copy; 2020 <a href="https://xiaobu2020.github.io">My New Hugo Site By </a>
+        &copy; 2020 <a href="https://xiaobu2020.github.io">飞雪无情的博客 By 飞雪无情</a>
         
     </div>
     <br />
@@ -124,14 +121,18 @@ HotSpot 虚拟机把它当成永久代来进行垃圾回收。但很难确定永
 
 
 
+    <script type="text/javascript" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
 
 
+
+
+    <script src='/js/douban.js'></script>
 
                 </div>
 
                 <div id="secondary">
     <section class="widget">
-        <form id="search" action='//www.google.com/search' method="get" accept-charset="utf-8" target="_blank" _lpchecked="1">
+        <form id="search" action='https://xiaobu2020.github.io/search/' method="get" accept-charset="utf-8" target="_blank" _lpchecked="1">
       
       <input type="text" name="q" maxlength="20" placeholder="Search">
       <input type="hidden" name="sitesearch" value="https://xiaobu2020.github.io">
@@ -151,6 +152,37 @@ HotSpot 虚拟机把它当成永久代来进行垃圾回收。但很难确定永
     </section>
 
     
+<section class="widget">
+    <h3 class="widget-title" style="color:red">福利派送</h3>
+    <ul class="widget-list">
+        
+        <li>
+            <a href="https://www.aliyun.com/minisite/goods?userCode=jdg9oj97&amp;share_source=copy_link" title="【2019双12】ALL IN CLoud 低至1折" target="_blank" style="color:red">
+                
+                    <img src="https://img.alicdn.com/tfs/TB1_rYHo7P2gK0jSZPxXXacQpXa-690-388.jpg">
+                
+            </a>
+        </li>
+        
+        <li>
+            <a href="https://cloud.tencent.com/act/cps/redirect?redirect=1048&amp;cps_key=14ff722692ac784fa8c3301c8c28d924&amp;from=console" title="助力产业智慧升级，云服务器首年88元起，更有千元代金券礼包免费领！" target="_blank" style="color:red">
+                
+                    <img src="https://upload-dianshi-1255598498.file.myqcloud.com/345-7c71532bd4935fbdd9a67c1a71e577b1767b805c.200%E7%89%88%E6%9C%ACB.jpg">
+                
+            </a>
+        </li>
+        
+        <li>
+            <a href="https://www.aliyun.com/acts/limit-buy?userCode=jdg9oj97" title="【渠道专享低折扣】11月特惠 限时2折" target="_blank" style="color:red">
+                
+                    <img src="https://img.alicdn.com/tfs/TB1hblJl7Y2gK0jSZFgXXc5OFXa-750-400.jpg">
+                
+            </a>
+        </li>
+        
+    </ul>
+</section>
+
 
     <section class="widget">
         <h3 class="widget-title"><a href="/categories">分类</a></h3>
@@ -167,6 +199,21 @@ HotSpot 虚拟机把它当成永久代来进行垃圾回收。但很难确定永
     </section>
 
     
+<section class="widget">
+    <h3 class="widget-title">友情链接</h3>
+    <ul class="widget-list">
+        
+        <li>
+            <a target="_blank" href="https://www.flysnow.org/" title="飞雪无情的博客">飞雪无情的博客</a>
+        </li>
+        
+        <li>
+            <a target="_blank" href="http://yuedu.baidu.com/ebook/14a722970740be1e640e9a3e" title="Android Gradle权威指南">Android Gradle权威指南</a>
+        </li>
+        
+    </ul>
+</section>
+
 
     <section class="widget">
         <h3 class="widget-title">其它</h3>
