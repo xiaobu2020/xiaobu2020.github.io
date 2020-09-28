@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>飞雪无情的博客</title>
+    <title>GoCodes</title>
     <link>https://xiaobu2020.github.io/</link>
-    <description>Recent content on 飞雪无情的博客</description>
+    <description>Recent content on GoCodes</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-CN</language>
-    <lastBuildDate>Fri, 25 Sep 2020 20:09:11 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 25 Sep 2020 21:20:52 +0800</lastBuildDate>
     
 	<atom:link href="https://xiaobu2020.github.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Java中的锁</title>
+      <link>https://xiaobu2020.github.io/post/juc/</link>
+      <pubDate>Fri, 25 Sep 2020 21:20:52 +0800</pubDate>
+      
+      <guid>https://xiaobu2020.github.io/post/juc/</guid>
+      <description>Java提供了丰富的锁，每种锁都包含其不同的特性，在适当的场景下能够展现出非常高的效率。本文以JDK8，为例，介绍主流锁的知识点，以及不同的使用场景。 首先，按照特性来定义锁，将锁进行归类。如下图所示。 Java中的锁分类 1.悲观锁 VS 乐观锁 乐观锁和悲观锁，体现了看待线程同步的不同角度</description>
+    </item>
     
     <item>
       <title>JVM虚拟机</title>

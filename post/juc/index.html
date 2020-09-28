@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Java中的锁 | GoCodes</title>
+    <meta property="og:title" content="Java中的锁 - GoCodes">
+    <meta property="og:type" content="article">
+        
+    <meta property="article:published_time" content='2020-09-25T21:20:52&#43;08:00'>
+        
+        
+    <meta property="article:modified_time" content='2020-09-25T21:20:52&#43;08:00'>
+        
+    <meta name="Keywords" content="Java语言笔记,xiaobu,java,博客,项目管理,python,软件架构">
+    <meta name="description" content="Java中的锁">
+        
+    <meta name="author" content="xiaobu">
+    <meta property="og:url" content="https://xiaobu2020.github.io/post/juc/">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+
+    <link rel="stylesheet" href='/css/normalize.css'>
+    <link rel="stylesheet" href='/css/style.css'>
+    <script type="text/javascript" src="//cdn.bootcdn.net/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    
+    
+    
+    
+    
+    
+        <link rel="stylesheet" href='/css/douban.css'>
+    
+        <link rel="stylesheet" href='/css/other.css'>
+    
+</head>
+
+
+<body>
+    <header id="header" class="clearfix">
+    <div class="container">
+        <div class="col-group">
+            <div class="site-name ">
+                
+                    <a id="logo" href="https://xiaobu2020.github.io">
+                        GoCodes
+                    </a>
+                
+                <p class="description">专注于Java、移动互联网、项目管理、软件架构</p>
+            </div>
+            <div>
+                <nav id="nav-menu" class="clearfix">
+                    <a class="current" href="https://xiaobu2020.github.io">首页</a>
+                    
+                    <a  href="https://xiaobu2020.github.io/tools/" title="工具">工具</a>
+                    
+                    <a  href="https://xiaobu2020.github.io/archives/" title="归档">归档</a>
+                    
+                    <a  href="https://xiaobu2020.github.io/about/" title="关于">关于</a>
+                    
+                </nav>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <div id="body">
+        <div class="container">
+            <div class="col-group">
+
+                <div class="col-8" id="main">
+                    
+<div class="res-cons">
+    <style type="text/css">
+    .post-toc {
+        position: fixed;
+        width: 200px;
+        margin-left: -210px;
+        padding: 5px 10px;
+        font-family: Athelas, STHeiti, Microsoft Yahei, serif;
+        font-size: 12px;
+        border: 1px solid rgba(0, 0, 0, .07);
+        border-radius: 5px;
+        background-color: rgba(255, 255, 255, 0.98);
+        background-clip: padding-box;
+        -webkit-box-shadow: 1px 1px 2px rgba(0, 0, 0, .125);
+        box-shadow: 1px 1px 2px rgba(0, 0, 0, .125);
+        word-wrap: break-word;
+        white-space: nowrap;
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+        z-index: 999;
+        cursor: pointer;
+        max-height: 70%;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .post-toc .post-toc-title {
+        width: 100%;
+        margin: 0 auto;
+        font-size: 20px;
+        font-weight: 400;
+        text-transform: uppercase;
+        text-align: center;
+    }
+
+    .post-toc .post-toc-content {
+        font-size: 15px;
+    }
+
+    .post-toc .post-toc-content>nav>ul {
+        margin: 10px 0;
+    }
+
+    .post-toc .post-toc-content ul {
+        padding-left: 20px;
+        list-style: square;
+        margin: 0.5em;
+        line-height: 1.8em;
+    }
+
+    .post-toc .post-toc-content ul ul {
+        padding-left: 15px;
+        display: none;
+    }
+
+    @media print,
+    screen and (max-width:1057px) {
+        .post-toc {
+            display: none;
+        }
+    }
+</style>
+<div class="post-toc" style="position: absolute; top: 188px;">
+    <h2 class="post-toc-title">文章目录</h2>
+    <div class="post-toc-content">
+        <nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#1悲观锁-vs-乐观锁">1.悲观锁 VS 乐观锁</a></li>
+        <li><a href="#2自旋锁-vs-适应性自旋锁">2.自旋锁 VS 适应性自旋锁</a></li>
+        <li><a href="#3synchronized锁的优化">3.synchronized锁的优化</a></li>
+        <li><a href="#4公平锁-vs-非公平锁">4.公平锁 VS 非公平锁</a></li>
+        <li><a href="#5可重入锁-vs-非可重入锁">5.可重入锁 VS 非可重入锁</a></li>
+        <li><a href="#6排它锁-vs-共享锁">6.排它锁 VS 共享锁</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+    </div>
+</div>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var postToc = $(".post-toc");
+        if (postToc.length) {
+            var leftPos = $("#main").offset().left;
+            if(leftPos<220){
+                postToc.css({"width":leftPos-10,"margin-left":(0-leftPos)})
+            }
+
+            var t = postToc.offset().top - 20,
+                a = {
+                    start: {
+                        position: "absolute",
+                        top: t
+                    },
+                    process: {
+                        position: "fixed",
+                        top: 20
+                    },
+                };
+            $(window).scroll(function () {
+                var e = $(window).scrollTop();
+                e < t ? postToc.css(a.start) : postToc.css(a.process)
+            })
+        }
+    })
+</script>
+    <article class="post">
+        <header>
+            <h1 class="post-title">Java中的锁</h1>
+        </header>
+        <date class="post-meta meta-date">
+            2020年9月25日
+        </date>
+        
+        
+        <div class="post-meta">
+            <span id="busuanzi_container_page_pv">|<span id="busuanzi_value_page_pv"></span><span>
+                    阅读</span></span>
+        </div>
+        
+        
+        <div class="post-content">
+            <p>Java提供了丰富的锁，每种锁都包含其不同的特性，在适当的场景下能够展现出非常高的效率。本文以JDK8，为例，介绍主流锁的知识点，以及不同的使用场景。</p>
+<p>首先，按照特性来定义锁，将锁进行归类。如下图所示。</p>
+<p><figure class="max-w-2xl mx-auto overflow-hidden">
+    
+        <img alt="" src="C:%5cUsers%5cZHG%5cDesktop%5cimages%5cLocks.png" />
+    
+    <figcaption class="p-2 text-center">Java中的锁分类</figcaption>
+</figure></p>
+<h3 id="1悲观锁-vs-乐观锁">1.悲观锁 VS 乐观锁</h3>
+<p>乐观锁和悲观锁，体现了看待线程同步的不同角度。</p>
+<hr>
+<h4 id="乐观锁">乐观锁</h4>
+<p>乐观锁总是假设最好的情况，认为线程每次去拿数据的时候，不会更改数据，所以不加锁。最常用的方法是通过版本号机制和CAS算法实现。在Java中的atomic下的原子类就是使用CAS实现的。</p>
+<h5 id="1版本号机制">1.版本号机制</h5>
+<p>通过在数据表中加上一个版本号version字段，表示数据被修改的次数。当数据被修改时，version就会增加一，当线程A要更新数据值时，在读取数据的同时也会读取version的值，在提交更新时，只有读取到的version的值与当前数据库中的值相等时，才能更新，否则重试更新操作，直到成功。</p>
+<p><strong>举例说明：</strong> 假设数据库账户信息中的有一个version字段，当前值为1，当前账户余额为1000。</p>
+<pre><code>  1.A线程读取数据，version=1，并减去500。
+
+  2.在A线程操作过程中，B线程也读入数据，version=1，并扣除200。
+
+  3.A线程完成更新后，将版本号version=1，余额500，提交数据库，此时提交的版本号等于数据库当前版本号，数据被更新，并且数据的version更新为2。
+
+  4.B线程完成操作后，也提交版本号，但是此时数据的版本号为2，所以，B线程的提交被驳回。
+</code></pre>
+<h5 id="2cas算法compare-and-swap">2.CAS算法(compare and swap)</h5>
+<p>CAS是一种无锁的算法。在不使用锁的情况下，实现多线程之间的同步问题。JUC包中的原子类就是通过CAS来实现了乐观锁。</p>
+<p>CAS涉及到三个操作数：
+-需要读写的内存值v
+-进行比较的值A
+-要写入的新值B</p>
+<p>当且仅当V的值等于A的值时，CAS通过原子方式用新值B来更新V的值，否则不会执行任何操作(比较和更新是一个原子操作)。一般情况下，是通过自旋的方式，不断的重试。</p>
+<p>以AtomicInteger类为例：</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<table style="border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">    <span style="color:#000;font-weight:bold">public</span> <span style="color:#000;font-weight:bold">class</span> <span style="color:#458;font-weight:bold">AtomicInteger</span> <span style="color:#000;font-weight:bold">extends</span> Number <span style="color:#000;font-weight:bold">implements</span> java<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">io</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">Serializable</span> <span style="color:#000;font-weight:bold">{</span>
+    <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">static</span> <span style="color:#000;font-weight:bold">final</span> <span style="color:#458;font-weight:bold">long</span> serialVersionUID <span style="color:#000;font-weight:bold">=</span> 6214790243416807050L<span style="color:#000;font-weight:bold">;</span>
+
+    <span style="color:#998;font-style:italic">// setup to use Unsafe.compareAndSwapInt for updates
+</span><span style="color:#998;font-style:italic"></span>    <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">static</span> <span style="color:#000;font-weight:bold">final</span> Unsafe unsafe <span style="color:#000;font-weight:bold">=</span> Unsafe<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">getUnsafe</span><span style="color:#000;font-weight:bold">();</span>
+    <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">static</span> <span style="color:#000;font-weight:bold">final</span> <span style="color:#458;font-weight:bold">long</span> valueOffset<span style="color:#000;font-weight:bold">;</span>
+
+    <span style="color:#000;font-weight:bold">static</span> <span style="color:#000;font-weight:bold">{</span>
+        <span style="color:#000;font-weight:bold">try</span> <span style="color:#000;font-weight:bold">{</span>
+            valueOffset <span style="color:#000;font-weight:bold">=</span> unsafe<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">objectFieldOffset</span>
+                <span style="color:#000;font-weight:bold">(</span>AtomicInteger<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">class</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">getDeclaredField</span><span style="color:#000;font-weight:bold">(</span><span style="color:#d14">&#34;value&#34;</span><span style="color:#000;font-weight:bold">));</span>
+        <span style="color:#000;font-weight:bold">}</span> <span style="color:#000;font-weight:bold">catch</span> <span style="color:#000;font-weight:bold">(</span>Exception ex<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">throw</span> <span style="color:#000;font-weight:bold">new</span> Error<span style="color:#000;font-weight:bold">(</span>ex<span style="color:#000;font-weight:bold">);</span> <span style="color:#000;font-weight:bold">}</span>
+    <span style="color:#000;font-weight:bold">}</span>
+
+    <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">volatile</span> <span style="color:#458;font-weight:bold">int</span> value<span style="color:#000;font-weight:bold">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>各个属性的作用：</p>
+<pre><code>  -unsafe：获取并操作内存的数据。
+  -valueOffset：存储value在AtomicInteger中的偏移量。
+  -value：存储AtomicInteger的int值，通过`volatile`关键字保证其可见性。
+</code></pre>
+<p>通过AtomicInteger的自增函数incrementAndGet()的源码，其调用的是unsafe类的getAndAddInt()方法。</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<table style="border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">7
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">8
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">    <span style="color:#000;font-weight:bold">public</span> <span style="color:#000;font-weight:bold">final</span> <span style="color:#458;font-weight:bold">int</span> <span style="color:#900;font-weight:bold">getAndAddInt</span><span style="color:#000;font-weight:bold">(</span>Object var1<span style="color:#000;font-weight:bold">,</span> <span style="color:#458;font-weight:bold">long</span> var2<span style="color:#000;font-weight:bold">,</span> <span style="color:#458;font-weight:bold">int</span> var4<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+        <span style="color:#458;font-weight:bold">int</span> var5<span style="color:#000;font-weight:bold">;</span>
+        <span style="color:#000;font-weight:bold">do</span> <span style="color:#000;font-weight:bold">{</span>
+            var5 <span style="color:#000;font-weight:bold">=</span> <span style="color:#000;font-weight:bold">this</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">getIntVolatile</span><span style="color:#000;font-weight:bold">(</span>var1<span style="color:#000;font-weight:bold">,</span> var2<span style="color:#000;font-weight:bold">);</span>
+        <span style="color:#000;font-weight:bold">}</span> <span style="color:#000;font-weight:bold">while</span><span style="color:#000;font-weight:bold">(!</span><span style="color:#000;font-weight:bold">this</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">compareAndSwapInt</span><span style="color:#000;font-weight:bold">(</span>var1<span style="color:#000;font-weight:bold">,</span> var2<span style="color:#000;font-weight:bold">,</span> var5<span style="color:#000;font-weight:bold">,</span> var5 <span style="color:#000;font-weight:bold">+</span> var4<span style="color:#000;font-weight:bold">));</span>
+
+        <span style="color:#000;font-weight:bold">return</span> var5<span style="color:#000;font-weight:bold">;</span>
+    <span style="color:#000;font-weight:bold">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>getAndAddInt()方法，通过do..while，循环获得var1对象偏移地址var2的值var5，然后判断内存值是否等于值var5。如果相等就将内存值设置为var5+var4。<code>compareAndSwapInt()</code>返回true时，整体返回false，退出循环，否则继续循环重试。整个“比较+更新”操作封装在compareAndSwapInt()中，在JNI(Jave Native Interface)里借助一个CPU指令完成，属于原子操作，可以保证多个线程都能够看到同一个变量的修改值。</p>
+<p>JDK通过CPU的<code>cmpxchg</code>指令，比较寄存器中的值和内存中的值。如果相等，就把写入的新值存入内存中。如果不等，就将内存值赋值给寄存器中的值。然后循环再次调动该指令进行重试，直到成功。</p>
+<hr>
+<h4 id="乐观锁的缺点">乐观锁的缺点</h4>
+<p><strong>1.ABA问题</strong>
+CAS在检测内存值是否发生变化时，没有变化才会更新内存值。但是如果内存值原来为A，修改为B，然后又变回了A，那么CAS进行检测时会发现值没有变化，但是实际上发生了变化。
+ABA问题的解决思路是在变量前面添加版本号，每次变量更新的时候都把版本号加1，这样原来的&quot;A-B-A&quot;就变成了&quot;1A-2B-3A&rdquo;。
+JDK中提供的<code>AtomicStampedReference</code>类就提供了这种能力，其中的<code>compareAndSet()</code>方法就是首先检查当前引用是否等于预期引用，并且当前标志是否等于预期标志，全部相等，则以原子方式将该引用和该标志的值设置为给定的更新值。</p>
+<p><strong>2.循环时间长，开销大</strong>
+CAS如果长时间不成功，会导致一直自旋，给CPU带来较大的开销。</p>
+<p><strong>3.只能保证一个共享变量的原子操作</strong>
+CAS只能保证单个共享变量有效，当操作多个共享变量时CAS无法保证操作的原子性。JDK提供了，<code>AtomicReference</code>类来保证引用对象之间的原子性，可以把多个变量放在一个对象里来进行CAS操作。</p>
+<hr>
+<h4 id="悲观锁">悲观锁</h4>
+<p>悲观锁则总是认为，每次拿数据的时候都会被修改，因此每次都需要给资源上锁。</p>
+<h5 id="适用场景">适用场景</h5>
+<p>乐观锁适用读操作多，写操作比较少的场景，省去锁的开销，可以提供吞吐量。</p>
+<p>悲观锁适用于写操作多的场景，加锁来保证数据的正确性。</p>
+<hr>
+<h3 id="2自旋锁-vs-适应性自旋锁">2.自旋锁 VS 适应性自旋锁</h3>
+<h4 id="自旋锁">自旋锁</h4>
+<p>阻塞或者唤醒一个线程需要操作系统切换CPU状态来完成，这种状态的转换需要消耗处理器的时间，如果同步代码快中的内容过于简单，状态转换消耗的时间有可能比用户代码执行的时间还要长。</p>
+<p>为了减少切换线程的时间代价，所以让当前线程等待一会，也就是进行自旋，如果自旋的过程中能够获得锁，就不需要进入阻塞而是直接获取同步资源，从而避免了切换线程的开销。这就是自旋。</p>
+<p>自旋等待虽然避免了线程的切换，但是它也要占用处理器的时间。如果锁占用的时间很长，那么自旋的线程只会白白浪费处理器的资源。因此必须设定一定的限度，如果自旋超过了限定次数依然没有成功获得锁，就将当前线程挂起。(默认为10次，可以通过-XX:PreBlockSpin修改)</p>
+<p>自旋锁的原理同样也是CAS。不做赘述。</p>
+<hr>
+<h4 id="适应性自旋锁">适应性自旋锁</h4>
+<p>自适应意味着自旋的时间或次数不固定，而是由前一次在同一个锁上的自旋时间及锁的拥有者的状态来决定。如果在同一个锁对象上，自旋等待刚刚成功获得过锁，并且持有锁的线程正在运行中，那么虚拟机就会认为这次自旋也是很有可能再次成功，进而它将允许自旋等待持续相对更长的时间，如果对于某个锁，自旋很少成功获得过，那么在以后尝试获取这个锁时将可能省略自旋过程，直接阻塞线程。</p>
+<p>在自旋锁中另外三种常见的锁的形式：</p>
+<pre><code>        1.TicketLock：主要解决的是公平性的问题。
+
+            原理：每当有线程获取锁的时候，就给该线程分配一个递增的id，称之为排队号。同时，锁对应一个服务号，每当有线程释放锁的时候，服务号就会递增，此时如果服务号与某个线程的排队号一致，那么该线程就获得锁，由于排队号是递增的，所以就保证了最先请求获取锁的线程可以最先获得锁，实现公平性。
+
+        2.CLHlock：CLH锁是一种基于链表的可扩展，高性能，公平的自旋锁，申请线程只在本地变量上自旋，它不断轮询前驱的状态，如果发现前驱释放了锁就结束自旋，获得锁。(CLHLock是基于隐式链表，没有真正的后续节点属性)
+
+        3.MCSlock:对本地变量的节点进行循环。(MCSLock是显示链表，有一个指向后续节点的属性)
+
+        CLHLock和MCSLock将获取锁的线程状态借助节点(node)保存，每个线程都会有一份独立的节点，这样就解决了TicketLock多处理器缓存同步的问题(即多处理器系统中，每个线程/进程占用的处理器都在读写同一个变量服务号，每次读写操作都必须在多个处理器之间进行缓存同步，这样会导致繁重的系统总线和内存的流量，降低系统整体的性能)。
+</code></pre>
+<hr>
+<h3 id="3synchronized锁的优化">3.synchronized锁的优化</h3>
+<p>此处不对synchronize进行具体的细节说明，仅针对四种锁的状态进行描述。</p>
+<p>synchronized通过Monitor来实现线程同步，Monitor是依赖于底层的操作系统的Mutex Lock(互斥锁)实现的线程同步。</p>
+<p>JDK6之前synchronized效率较低，主要是因为频繁的阻塞和唤醒线程，带来大量的性能消耗。Mutex Lock(互斥锁)我们将其称之为“重量级锁”。</p>
+<hr>
+<h4 id="无锁">无锁</h4>
+<p>上面介绍的CAS原理就是无锁，不对资源进行锁定，所有线程都能访问并修改同一资源，但同时只有一个线程能够修改成功。</p>
+<hr>
+<h4 id="偏向锁">偏向锁</h4>
+<p>偏向锁的思想指一段同步代码一直被一个线程访问，那么该线程会自动获取锁，不在需要进行同步操作，甚至连CAS都不需要。</p>
+<p>偏向锁出现的原因：
+因为大多数情况下，锁总是由同一线程多次获得，不存在多线程竞争，所以出现了偏向锁。在无多线程竞争的情况下尽量减少不必要的轻量级锁执行路径，因为轻量级锁的获取及释放依赖多次CAS原子指令，而偏向锁值需要置换ThreadID的时候依赖一次CAS原子指令即可。</p>
+<p>原理：
+当一个线程访问同步代码块并获取锁时，会在Mark Word里存储锁偏向的线程ID。在线程进入和退出同步块时不再通过CAS操作来加锁和解锁，而是检测Mark Word里是否存储着指向当前线程的偏向锁。</p>
+<p>线程不会主动释放偏向锁，只有另外一个线程去尝试竞争这个锁时，偏向锁才会释放。此时撤销偏向后恢复到未锁定状态或者轻量级锁状态。</p>
+<hr>
+<h4 id="轻量级锁">轻量级锁</h4>
+<p>当锁是偏向锁时，被另外的线程访问，偏向锁就会升级为轻量级锁，其他线程会通过自旋的形式尝试获取锁，不会阻塞，从而提供性能。此时Mark Word的锁标志位设置为“00”，表示对象处于轻量级锁定状态。</p>
+<p>自旋超过一定次数，或者一个线程持有锁，一个自旋，又有第三个线程来获取锁时，轻量级锁升级为重量级锁。</p>
+<hr>
+<h4 id="重量级锁">重量级锁</h4>
+<p>升级为重量级锁时，锁标志位变为“10”，此时等待锁的线程都会进入阻塞状态。</p>
+<hr>
+<h3 id="4公平锁-vs-非公平锁">4.公平锁 VS 非公平锁</h3>
+<h4 id="公平锁">公平锁</h4>
+<p>公平锁是指多个线程按照申请锁的顺序来获取锁，线程直接进入队列中排队，队列中的第一个线程才能获得锁。</p>
+<p><strong>优点：</strong>
+等待锁的线程不会饿死。</p>
+<p><strong>缺点：</strong>
+整体吞吐效率相对于非公平锁要低，等待队列中除第一个线程以外的所有线程都会阻塞，CPU唤醒阻塞线程的开销比非公平锁大。</p>
+<hr>
+<h4 id="非公平锁">非公平锁</h4>
+<p>非公平锁是指多个线程加锁时，直接尝试去获得锁，获取失败才会到等待队列的队尾等待。但是如果，此时锁正好被释放，那么这个线程就无需阻塞直接获取锁。因此，非公平锁有可能出现后申请锁的线程优先获取锁的场景。</p>
+<p><strong>优点：</strong>
+减少唤醒线程的开销，整体的吞吐效率高。</p>
+<p><strong>缺点：</strong>
+处于等待队列中的线程可能会饿死，或者等很久才会获得锁。</p>
+<hr>
+<h4 id="源码解读">源码解读</h4>
+<p>通过ReentrantLock来说明公平锁和非公平锁。</p>
+<p>
+        <img class="mx-auto" alt="" src="C:%5cUsers%5cZHG%5cDesktop%5cimages%5cReentrantLock.png" />   
+    </p>
+<p>ReentrantLock类包含一个内部类Sync，其继承了AQS(AbstractQueuedSynchronizer)，添加锁和释放锁的操作，实际上都是这Sync中实现的。它有公平锁FairSync和非公平锁NonfairSync两个子类。ReentrantLock默认使用费公平锁，可以通过构造器指定使用公平锁。</p>
+<!-- raw HTML omitted -->
+<p>公平锁和非公平锁的lock()方法唯一的区别是：公平锁在获取同步状态时多了一个限制条件：hasQueuedPredecessors()。</p>
+<p>
+        <img class="mx-auto" alt="" src="C:%5cUsers%5cZHG%5cDesktop%5cimages%5chasQueuedPredecessors.png" />   
+    </p>
+<p>该方法主要就是：判断当前线程是否位于同步队列中的第一个，如果是，则返回true，否则返回false。</p>
+<hr>
+<h3 id="5可重入锁-vs-非可重入锁">5.可重入锁 VS 非可重入锁</h3>
+<h4 id="可重入锁">可重入锁</h4>
+<p>可重入锁又名递归锁，指同一个线程在外层方法获取锁的时候，再进入该线程的内层方法会自动获取锁。前提是锁对象是同一个对象或者Class。不会因为之前<strong>已经获取过还没有释放锁而阻塞</strong>。</p>
+<p>ReentrantLock和synchronized都是可重入锁。</p>
+<hr>
+<p><strong>以synchronized为例：</strong></p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<table style="border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#000;font-weight:bold">class</span> <span style="color:#458;font-weight:bold">User</span><span style="color:#000;font-weight:bold">{</span>
+
+<span style="color:#000;font-weight:bold">public</span> <span style="color:#000;font-weight:bold">synchronized</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">sayHello</span><span style="color:#000;font-weight:bold">(){</span>
+    System<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">out</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">println</span><span style="color:#000;font-weight:bold">(</span>Thread<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">currentThread</span><span style="color:#000;font-weight:bold">().</span><span style="color:#008080">getName</span><span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">+</span> <span style="color:#d14">&#34;......hello.....&#34;</span><span style="color:#000;font-weight:bold">);</span>
+    sayEnd<span style="color:#000;font-weight:bold">();</span>
+<span style="color:#000;font-weight:bold">}</span>
+
+<span style="color:#000;font-weight:bold">public</span> <span style="color:#000;font-weight:bold">synchronized</span>  <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">sayEnd</span><span style="color:#000;font-weight:bold">(){</span>
+    System<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">out</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">println</span><span style="color:#000;font-weight:bold">(</span>Thread<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">currentThread</span><span style="color:#000;font-weight:bold">().</span><span style="color:#008080">getName</span><span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">+</span> <span style="color:#d14">&#34;......end..........&#34;</span><span style="color:#000;font-weight:bold">);</span>
+<span style="color:#000;font-weight:bold">}</span>
+
+<span style="color:#000;font-weight:bold">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的代码中，类中的两个方法都是被内置synchronized修饰的，sayHello()方法中调用sayEnd()方法。因为synchronized锁是可重入锁，所以同一线程在调用sayEnd()方法时，可以直接获取当前对象的锁。</p>
+<hr>
+<p><strong>为什么可重入锁可以在嵌套调用时自动获得锁？</strong></p>
+<pre><code>  可重入锁是将锁与该线程的整个过程绑定，只有整个过程结束，才会把锁释放。
+
+  非可重入锁是将锁与该线程的一次调用绑定，一次调用过后不会释放锁，导致第二次调用阻塞。形成死锁。
+</code></pre>
+<hr>
+<h4 id="非可重入锁">非可重入锁</h4>
+<p>非可重入锁NonReentrantLock，在重复调用同步资源时会出现死锁。</p>
+<p><strong>为什么会出现死锁？</strong></p>
+<p>ReentrantLock和NonReentrantLock都继承AQS,AQS中维护了一个同步状态status来计数重入次数，status初始值为0。</p>
+<p>当线程尝试获取锁时，可重入锁先尝试获取并更新status值，如果status==0，表示没有其他线程在执行同步代码，则把status设置为1，当前线程开始执行。如果status != 0，则判断当前线程是否获取到这个锁的线程，如果是，执行c + acquires，且当前线程可以再次获取锁。</p>
+<!-- raw HTML omitted -->
+<p>而非重入锁是直接去获取并尝试更新当前的status的值，如果status != 0的话会导致其获取锁失败，当前线程阻塞。</p>
+<hr>
+<h3 id="6排它锁-vs-共享锁">6.排它锁 VS 共享锁</h3>
+<h4 id="排它锁">排它锁</h4>
+<p>排它锁，顾名思义，该锁一次只能被一个线程所持有。如果线程A对数据D加了排他锁，则其他线程不能再对D添加任何类型的锁。获得排他锁的线程，既可以读数据也可以修改数据。synchronized和Lock的实现类就是互斥锁。</p>
+<hr>
+<h4 id="共享锁">共享锁</h4>
+<p>共享锁，指该锁可以被多个线程持有。如果线程A对数据D加了共享锁，则其他线程只能对D添加共享锁，不能添加排它锁。获得共享锁的线程只能读数据，不能修改数据。</p>
+<hr>
+<h4 id="reentrantreadwritelock为例">ReentrantReadWriteLock为例</h4>
+<p>ReentrantReadWriteLock分为：ReadLock(读锁)和WriteLick(写锁)。读锁是共享锁，可以保证并发读非常高效。写锁是排它锁，读写，写读，写写的过程互斥。</p>
+<p>AQS的state字段，占32位，该字段用来描述有多少线程获得锁。如果是重入锁，state表示重入次数。在共享锁中表示持有锁的数量。在ReentrantReadWriteLock中，state的高16位表示读锁状态(读锁个数)，低16位表示写锁状态(写锁个数)。</p>
+<p>
+        <img class="mx-auto" alt="" src="C:%5cUsers%5cZHG%5cDesktop%5cimages%5cReentrantReadWriteLock.png" />   
+    </p>
+<hr>
+<!-- raw HTML omitted -->
+<p>ReentrantReadWriteLock的两把锁：ReadLock和WriteLock。都是通过内部类Sync实现的锁。Sync是AQS的一个子类。</p>
+<hr>
+<p><strong>写锁源码：</strong></p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<table style="border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#000;font-weight:bold">protected</span> <span style="color:#000;font-weight:bold">final</span> <span style="color:#458;font-weight:bold">boolean</span> <span style="color:#900;font-weight:bold">tryAcquire</span><span style="color:#000;font-weight:bold">(</span><span style="color:#458;font-weight:bold">int</span> acquires<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+    Thread current <span style="color:#000;font-weight:bold">=</span> Thread<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">currentThread</span><span style="color:#000;font-weight:bold">();</span>
+    <span style="color:#458;font-weight:bold">int</span> c <span style="color:#000;font-weight:bold">=</span> getState<span style="color:#000;font-weight:bold">();</span>             <span style="color:#998;font-style:italic">// 获得当前锁的个数
+</span><span style="color:#998;font-style:italic"></span>    <span style="color:#458;font-weight:bold">int</span> w <span style="color:#000;font-weight:bold">=</span> exclusiveCount<span style="color:#000;font-weight:bold">(</span>c<span style="color:#000;font-weight:bold">);</span>      <span style="color:#998;font-style:italic">// 获得写锁的个数w
+</span><span style="color:#998;font-style:italic"></span>    <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>c <span style="color:#000;font-weight:bold">!=</span> 0<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>                   <span style="color:#998;font-style:italic">//如果已经有线程持有锁
+</span><span style="color:#998;font-style:italic"></span>        <span style="color:#998;font-style:italic">// (Note: if c != 0 and w == 0 then shared count != 0)
+</span><span style="color:#998;font-style:italic"></span>
+        <span style="color:#998;font-style:italic">// 如果写线程数w为0，表示存在读锁，或者持有锁的线程不是当前线程就返回失败
+</span><span style="color:#998;font-style:italic"></span>        <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>w <span style="color:#000;font-weight:bold">==</span> 0 <span style="color:#000;font-weight:bold">||</span> current <span style="color:#000;font-weight:bold">!=</span> getExclusiveOwnerThread<span style="color:#000;font-weight:bold">())</span>
+            <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">false</span><span style="color:#000;font-weight:bold">;</span>
+
+        <span style="color:#998;font-style:italic">// 如果写入锁的数量大于最大数(65535)，抛Error。    
+</span><span style="color:#998;font-style:italic"></span>        <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>w <span style="color:#000;font-weight:bold">+</span> exclusiveCount<span style="color:#000;font-weight:bold">(</span>acquires<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">&gt;</span> MAX_COUNT<span style="color:#000;font-weight:bold">)</span>
+            <span style="color:#000;font-weight:bold">throw</span> <span style="color:#000;font-weight:bold">new</span> Error<span style="color:#000;font-weight:bold">(</span><span style="color:#d14">&#34;Maximum lock count exceeded&#34;</span><span style="color:#000;font-weight:bold">);</span>
+        <span style="color:#998;font-style:italic">// Reentrant acquire
+</span><span style="color:#998;font-style:italic"></span>        setState<span style="color:#000;font-weight:bold">(</span>c <span style="color:#000;font-weight:bold">+</span> acquires<span style="color:#000;font-weight:bold">);</span>
+        <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">true</span><span style="color:#000;font-weight:bold">;</span>
+    <span style="color:#000;font-weight:bold">}</span>
+
+    <span style="color:#998;font-style:italic">// 如果当前写线程数量为0，并且当前线程需要阻塞，那么久返回false；或者如果通过CAS增加写线程数失败也返回false。
+</span><span style="color:#998;font-style:italic"></span>    <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>writerShouldBlock<span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">||</span>
+        <span style="color:#000;font-weight:bold">!</span>compareAndSetState<span style="color:#000;font-weight:bold">(</span>c<span style="color:#000;font-weight:bold">,</span> c <span style="color:#000;font-weight:bold">+</span> acquires<span style="color:#000;font-weight:bold">))</span>
+        <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">false</span><span style="color:#000;font-weight:bold">;</span>
+
+    <span style="color:#998;font-style:italic">// 如果c=0,w=0或c&gt;0,w&gt;0（重入），则设置当前线程或锁的拥有者。    
+</span><span style="color:#998;font-style:italic"></span>    setExclusiveOwnerThread<span style="color:#000;font-weight:bold">(</span>current<span style="color:#000;font-weight:bold">);</span>
+    <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">true</span><span style="color:#000;font-weight:bold">;</span>
+<span style="color:#000;font-weight:bold">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>tryAcquire()除了重入条件（当前线程为获取到写锁的线程）之外，增加了一个读锁是否存在的判断。如果存在读锁，则写锁不能被获取。原因在于：必须保证写锁的操作对读锁是可见的，如果允许读锁在已被获取的情况下，对写锁的获取，那么正在运行的其他读线程就无法感知到当前写线程的操作。</p>
+<p>因此，只有等待其他读线程都释放了读锁，写锁才能被当前线程获取，而写锁一旦被获取，则其他读写程序的后续访问均被阻塞。写锁的释放与ReentrantLock的释放过程类似，每次释放均减少写状态，当写状态为0时，表示写锁已被释放，然后等待的读写线程才能继续访问读写锁，同时前一次写线程的修改对后续的读写线程可见。</p>
+<p><strong>总结：</strong></p>
+<p>通过ReentrantLock的公平锁和非公平锁的加锁过程可以发现，如果当前线程不是拥有锁的线程时，就不能加锁，所以它添加的锁时排它锁。</p>
+<hr>
+<p><strong>读锁源码：</strong></p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<table style="border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#000;font-weight:bold">protected</span> <span style="color:#000;font-weight:bold">final</span> <span style="color:#458;font-weight:bold">int</span> <span style="color:#900;font-weight:bold">tryAcquireShared</span><span style="color:#000;font-weight:bold">(</span><span style="color:#458;font-weight:bold">int</span> unused<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+    Thread current <span style="color:#000;font-weight:bold">=</span> Thread<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">currentThread</span><span style="color:#000;font-weight:bold">();</span>
+    <span style="color:#458;font-weight:bold">int</span> c <span style="color:#000;font-weight:bold">=</span> getState<span style="color:#000;font-weight:bold">();</span>
+    <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>exclusiveCount<span style="color:#000;font-weight:bold">(</span>c<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">!=</span> 0 <span style="color:#000;font-weight:bold">&amp;&amp;</span>
+        getExclusiveOwnerThread<span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">!=</span> current<span style="color:#000;font-weight:bold">)</span>
+        <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">-</span>1<span style="color:#000;font-weight:bold">;</span>             <span style="color:#998;font-style:italic">// 如果其他线程已经获取了写锁，则当前线程获取读锁失败，进入等待状态。
+</span><span style="color:#998;font-style:italic"></span>    <span style="color:#458;font-weight:bold">int</span> r <span style="color:#000;font-weight:bold">=</span> sharedCount<span style="color:#000;font-weight:bold">(</span>c<span style="color:#000;font-weight:bold">);</span>
+    <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(!</span>readerShouldBlock<span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">&amp;&amp;</span>
+        r <span style="color:#000;font-weight:bold">&lt;</span> MAX_COUNT <span style="color:#000;font-weight:bold">&amp;&amp;</span>
+        compareAndSetState<span style="color:#000;font-weight:bold">(</span>c<span style="color:#000;font-weight:bold">,</span> c <span style="color:#000;font-weight:bold">+</span> SHARED_UNIT<span style="color:#000;font-weight:bold">))</span> <span style="color:#000;font-weight:bold">{</span>
+        <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>r <span style="color:#000;font-weight:bold">==</span> 0<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+            firstReader <span style="color:#000;font-weight:bold">=</span> current<span style="color:#000;font-weight:bold">;</span>
+            firstReaderHoldCount <span style="color:#000;font-weight:bold">=</span> 1<span style="color:#000;font-weight:bold">;</span>
+        <span style="color:#000;font-weight:bold">}</span> <span style="color:#000;font-weight:bold">else</span> <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>firstReader <span style="color:#000;font-weight:bold">==</span> current<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+            firstReaderHoldCount<span style="color:#000;font-weight:bold">++;</span>
+        <span style="color:#000;font-weight:bold">}</span> <span style="color:#000;font-weight:bold">else</span> <span style="color:#000;font-weight:bold">{</span>
+            HoldCounter rh <span style="color:#000;font-weight:bold">=</span> cachedHoldCounter<span style="color:#000;font-weight:bold">;</span>
+            <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>rh <span style="color:#000;font-weight:bold">==</span> <span style="color:#000;font-weight:bold">null</span> <span style="color:#000;font-weight:bold">||</span> rh<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">tid</span> <span style="color:#000;font-weight:bold">!=</span> getThreadId<span style="color:#000;font-weight:bold">(</span>current<span style="color:#000;font-weight:bold">))</span>
+                cachedHoldCounter <span style="color:#000;font-weight:bold">=</span> rh <span style="color:#000;font-weight:bold">=</span> readHolds<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">get</span><span style="color:#000;font-weight:bold">();</span>
+            <span style="color:#000;font-weight:bold">else</span> <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>rh<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">count</span> <span style="color:#000;font-weight:bold">==</span> 0<span style="color:#000;font-weight:bold">)</span>
+                readHolds<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">set</span><span style="color:#000;font-weight:bold">(</span>rh<span style="color:#000;font-weight:bold">);</span>
+            rh<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">count</span><span style="color:#000;font-weight:bold">++;</span>
+        <span style="color:#000;font-weight:bold">}</span>
+        <span style="color:#000;font-weight:bold">return</span> 1<span style="color:#000;font-weight:bold">;</span>
+    <span style="color:#000;font-weight:bold">}</span>
+    <span style="color:#000;font-weight:bold">return</span> fullTryAcquireShared<span style="color:#000;font-weight:bold">(</span>current<span style="color:#000;font-weight:bold">);</span>
+<span style="color:#000;font-weight:bold">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果其他线程已经获取了写锁，则当前线程获取读锁失败，进入等待状态。如果当前线程获取了写锁或者写锁未被获取，则当前线程(通过CAS保证线程安全)增加读状态，成功获取读锁。读锁的每次释放，可能有多个读线程同时释放读锁，均减少读状态。</p>
+<hr>
+
+        </div>
+
+        
+<div class="post-archive">
+    <ul class="post-copyright">
+        <li><strong>原文作者：</strong><a rel="author" href="https://xiaobu2020.github.io">xiaobu</a></li>
+        <li style="word-break:break-all"><strong>原文链接：</strong><a href="https://xiaobu2020.github.io/post/juc/">https://xiaobu2020.github.io/post/juc/</a></li>
+        <li><strong>版权声明：</strong>本作品采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">知识共享署名-非商业性使用-禁止演绎 4.0 国际许可协议</a>进行许可，非商业转载请注明出处（作者，原文链接），商业转载请联系作者获得授权。</li>
+    </ul>
+</div>
+<br/>
+
+
+
+        
+
+<div class="post-archive">
+    <h2>See Also</h2>
+    <ul class="listing">
+        
+        <li><a href="/post/blog/">JVM虚拟机</a></li>
+        
+    </ul>
+</div>
+
+
+        <div class="post-meta meta-tags">
+            
+            没有标签
+            
+        </div>
+    </article>
+    
+    <div id="disqus_thread"></div>
+<script type="application/javascript">
+    var disqus_config = function () {
+    
+    
+    
+    };
+    (function() {
+        if (["localhost", "127.0.0.1"].indexOf(window.location.hostname) != -1) {
+            document.getElementById('disqus_thread').innerHTML = 'Disqus comments not available by default when the website is previewed locally.';
+            return;
+        }
+        var d = document, s = d.createElement('script'); s.async = true;
+        s.src = '//' + "yourdiscussshortname" + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+    
+    
+    <div class="post bg-white">
+      <script src="https://utteranc.es/client.js"
+            repo= "your github repo"
+            issue-term="pathname"
+            theme="github-light"
+            crossorigin="anonymous"
+            async>
+      </script>
+    </div>
+    
+</div>
+
+                    <footer id="footer">
+    <div>
+        &copy; 2020 <a href="https://xiaobu2020.github.io">GoCodes By xiaobu</a>
+        
+    </div>
+    <br />
+    <div>
+        <div class="github-badge">
+            <a href="https://gohugo.io/" target="_black" rel="nofollow"><span class="badge-subject">Powered by</span><span class="badge-value bg-blue">Hugo</span></a>
+        </div>
+        <div class="github-badge">
+            <a href="https://www.flysnow.org/" target="_black"><span class="badge-subject">Design by</span><span class="badge-value bg-brightgreen">飞雪无情</span></a>
+        </div>
+        <div class="github-badge">
+            <a href="https://github.com/flysnow-org/maupassant-hugo" target="_black"><span class="badge-subject">Theme</span><span class="badge-value bg-yellowgreen">Maupassant</span></a>
+        </div>
+    </div>
+</footer>
+
+
+    
+    <script type="text/javascript">
+        window.MathJax = {
+            tex2jax: {
+                inlineMath: [['$', '$']],
+                processEscapes: true
+                }
+            };
+    </script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+
+<a id="rocket" href="#top"></a>
+<script type="text/javascript" src='/js/totop.js?v=0.0.0' async=""></script>
+
+
+
+    <script type="text/javascript" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+
+
+
+
+    <script src='/js/douban.js'></script>
+
+                </div>
+
+                <div id="secondary">
+    <section class="widget">
+        <form id="search" action='https://xiaobu2020.github.io/search/' method="get" accept-charset="utf-8" target="_blank" _lpchecked="1">
+      
+      <input type="text" name="q" maxlength="20" placeholder="Search">
+      <input type="hidden" name="sitesearch" value="https://xiaobu2020.github.io">
+      <button type="submit" class="submit icon-search"></button>
+</form>
+    </section>
+    
+    <section class="widget">
+        <h3 class="widget-title">最近文章</h3>
+<ul class="widget-list">
+    
+    <li>
+        <a href="https://xiaobu2020.github.io/post/juc/" title="Java中的锁">Java中的锁</a>
+    </li>
+    
+    <li>
+        <a href="https://xiaobu2020.github.io/post/blog/" title="JVM虚拟机">JVM虚拟机</a>
+    </li>
+    
+</ul>
+    </section>
+
+    
+
+    <section class="widget">
+        <h3 class="widget-title"><a href="/categories">分类</a></h3>
+<ul class="widget-list">
+    
+</ul>
+    </section>
+
+    <section class="widget">
+        <h3 class="widget-title"><a href="/tags">标签</a></h3>
+<div class="tagcloud">
+    
+</div>
+    </section>
+
+    
+<section class="widget">
+    <h3 class="widget-title">友情链接</h3>
+    <ul class="widget-list">
+        
+        <li>
+            <a target="_blank" href="https://xiaobu2020.github.io/" title="GoCodes">GoCodes</a>
+        </li>
+        
+    </ul>
+</section>
+
+
+    <section class="widget">
+        <h3 class="widget-title">其它</h3>
+        <ul class="widget-list">
+            <li><a href="https://xiaobu2020.github.io/index.xml">文章 RSS</a></li>
+        </ul>
+    </section>
+</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
